@@ -1,87 +1,114 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../provider/auth_provider.dart';
-import '../provider/transationProvider.dart';
+import 'package:hive/hive.dart';
+import 'package:go_router/go_router.dart';
+import 'package:money_management_app/pages/addTransationForm.dart';
+
+import '../provider/transationProvider.dart' as txProvider;
+
+import '../provider/transationProvider.dart' as addForm;
 import '../routes/route_enum.dart';
 import 'addTransationForm.dart';
 import 'credit.dart';
+import 'debit.dart';
 
-class HomePage extends ConsumerWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final balanceAsync = ref.watch(balanceProvider);
-    final transactionsAsync = ref.watch(transactionsProvider);
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  String username = '';
+  String email = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+    final doc = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+
+    if (doc.exists) {
+      setState(() {
+        username = doc.data()?['username'] ?? 'User';
+        email = doc.data()?['email'] ?? '';
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser!.uid;
+
+    final balanceAsync = ref.watch(addForm.balanceProvider(userId));
+    final transactionsAsync = ref.watch(addForm.transactionsProvider(userId));
 
     return Scaffold(
       appBar: AppBar(
-        title: Center(child: const Text("Expense Tracker")),
+        title: const Text("Expense Tracker"),
         backgroundColor: Colors.amber,
       ),
       backgroundColor: Colors.amber.shade200,
-
-      // Drawer with SignOut
       drawer: Drawer(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Text(
-                "Menu",
-                style: TextStyle(color: Colors.white, fontSize: 24),
+            UserAccountsDrawerHeader(
+              decoration: const BoxDecoration(color: Colors.blue),
+              accountName: Text(username),
+              accountEmail: Text(email),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Colors.white,
+                child: Text(
+                  username.isNotEmpty ? username[0].toUpperCase() : 'U',
+                  style: const TextStyle(fontSize: 24, color: Colors.blue),
+                ),
               ),
             ),
-      ListTile(
-        leading: const Icon(Icons.logout),
-        title: const Text("Sign Out"),
-        onTap: () async {
-          await FirebaseAuth.instance.signOut();
-          final box = Hive.box('authBox');
-          await box.clear();
-          await ref.read(authControllerProvider.notifier).logout();
-          if (context.mounted) {
-            context.goNamed(AppRoute.login.name); // ✅ fixed
-          }
-        },
-      ),
-
+            ListTile(
+              leading: const Icon(Icons.logout),
+              title: const Text("Sign Out"),
+              onTap: () async {
+                await FirebaseAuth.instance.signOut();
+                final box = Hive.box('authBox');
+                await box.clear();
+                if (context.mounted) {
+                  context.goNamed(AppRoute.login.name);
+                }
+              },
+            ),
           ],
         ),
       ),
-
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Available Balance
             balanceAsync.when(
-
               data: (balance) => Text(
-
                 "Available Balance: RS${balance.toStringAsFixed(2)}",
-                style: const TextStyle(
-                    fontSize: 25, fontWeight: FontWeight.bold, ),
+                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
               ),
-              loading: () => Center(child: const CircularProgressIndicator()),
+              loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Text("Error: $e"),
             ),
             const SizedBox(height: 20),
-
             const Text(
               "Transaction History",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
-
-            // Transaction list
+            // Transactions List
             Expanded(
               child: transactionsAsync.when(
                 data: (transactions) {
@@ -89,19 +116,15 @@ class HomePage extends ConsumerWidget {
                     return const Center(child: Text("No transactions yet"));
                   }
 
-                  transactions.sort((a, b) => b.date.compareTo(a.date));
-
-                  return ListView.builder(
-
+                  return ListView.separated(
                     itemCount: transactions.length,
+                    separatorBuilder: (_, __) => const Divider(),
                     itemBuilder: (context, index) {
-                      final transaction = transactions[index];
-                      final formattedDate =
-                      DateFormat('dd MMM yyyy, hh:mm a')
-                          .format(transaction.date);
+                      final tx = transactions[index];
+                      final formattedDate = DateFormat('dd MMM yyyy, hh:mm a').format(tx.date);
 
                       return Dismissible(
-                        key: Key(transaction.id),
+                        key: Key(tx.id),
                         background: Container(
                           color: Colors.red,
                           alignment: Alignment.centerLeft,
@@ -116,7 +139,6 @@ class HomePage extends ConsumerWidget {
                         ),
                         confirmDismiss: (direction) async {
                           if (direction == DismissDirection.startToEnd) {
-                            // Delete
                             final confirm = await showDialog(
                               context: context,
                               builder: (_) => AlertDialog(
@@ -125,65 +147,47 @@ class HomePage extends ConsumerWidget {
                                     "Are you sure you want to delete this transaction?"),
                                 actions: [
                                   TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, false),
-                                      child: const Text("Cancel")),
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text("Cancel"),
+                                  ),
                                   TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(context, true),
-                                      child: const Text("Delete")),
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text("Delete"),
+                                  ),
                                 ],
                               ),
                             );
                             if (confirm == true) {
                               await FirebaseFirestore.instance
                                   .collection('transactions')
-                                  .doc(transaction.id)
+                                  .doc(tx.id)
                                   .delete();
-                              ref.refresh(transactionsProvider);
+                              ref.refresh(addForm.transactionsProvider(userId));
                             }
                             return confirm;
                           } else if (direction == DismissDirection.endToStart) {
-                            // Edit
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => AddTransactionForm(
-                                  transaction: transaction,
-                                ),
+                                builder: (_) => AddTransactionForm(transaction: tx),
                               ),
-                            ).then(
-                                    (_) => ref.refresh(transactionsProvider));
+                            ).then((_) => ref.refresh(addForm.transactionsProvider(userId)));
                             return false;
                           }
                           return false;
                         },
-                        child: Card(
-                          color: Colors.amber.shade50,
-                          child: ListTile(
-                            leading: Icon(
-                              transaction.type == "credit"
-                                  ? Icons.arrow_upward
-                                  : Icons.arrow_downward,
-                              color: transaction.type == "credit"
-                                  ? Colors.green
-                                  : Colors.red,
-                            ),
-                            title: Text(transaction.title),
-                            subtitle: Text(
-                              "${transaction.description}\n$formattedDate",
-                            ),
-                            isThreeLine: true,
-                            trailing: Text(
-                              transaction.type == "credit"
-                                  ? "+ ${transaction.amount}"
-                                  : "- ${transaction.amount}",
-                              style: TextStyle(
-                                color: transaction.type == "credit"
-                                    ? Colors.green
-                                    : Colors.red,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        child: ListTile(
+                          leading: Icon(
+                            tx.type == "credit" ? Icons.arrow_upward : Icons.arrow_downward,
+                            color: tx.type == "credit" ? Colors.green : Colors.red,
+                          ),
+                          title: Text(tx.title),
+                          subtitle: Text("${tx.description}\n$formattedDate"),
+                          trailing: Text(
+                            tx.type == "credit" ? "+ ${tx.amount}" : "- ${tx.amount}",
+                            style: TextStyle(
+                              color: tx.type == "credit" ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
@@ -191,54 +195,38 @@ class HomePage extends ConsumerWidget {
                     },
                   );
                 },
-                loading: () =>
-                const Center(child: CircularProgressIndicator()),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text("Error: $e")),
               ),
             ),
           ],
         ),
       ),
-
       bottomNavigationBar: BottomNavigationBar(
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add),
-            label: "Add",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.arrow_upward, color: Colors.green),
-            label: "Credits",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.arrow_downward, color: Colors.red),
-            label: "Debits",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.add), label: "Add"),
+          BottomNavigationBarItem(icon: Icon(Icons.arrow_upward), label: "Credits"),
+          BottomNavigationBarItem(icon: Icon(Icons.arrow_downward), label: "Debits"),
         ],
         onTap: (index) {
           if (index == 0) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const AddTransactionForm()),
-            ).then((_) => ref.refresh(transactionsProvider));
+            ).then((_) => ref.refresh(addForm.transactionsProvider(userId)));
           } else if (index == 1) {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const Credit(filterType: 'credit'),
-              ),
+              MaterialPageRoute(builder: (_) => Credit(filterType: 'credit')),
             );
           } else if (index == 2) {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const Credit(filterType: 'debit'), // or create Debit page
-              ),
+              MaterialPageRoute(builder: (_) => Credit(filterType: 'debit')),
             );
           }
         },
       ),
-
     );
   }
 }

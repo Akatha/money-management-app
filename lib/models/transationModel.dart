@@ -5,8 +5,9 @@ class TransactionModel {
   final String title;
   final String description;
   final double amount;
-  final String type; // "credit" or "debit"
+  final String type; // 'credit' or 'debit'
   final DateTime date;
+  final String userId;
 
   TransactionModel({
     required this.id,
@@ -15,21 +16,24 @@ class TransactionModel {
     required this.amount,
     required this.type,
     required this.date,
+    required this.userId,
   });
 
-  // Convert Firestore -> Model
-  factory TransactionModel.fromMap(Map<String, dynamic> map, String docId) {
+  factory TransactionModel.fromMap(Map<String, dynamic> map, String id) {
     return TransactionModel(
-      id: docId,
+      id: id,
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       amount: (map['amount'] ?? 0).toDouble(),
-      type: map['type'] ?? 'debit',
-      date: (map['date'] as Timestamp).toDate(),
+      type: map['type'] ?? 'credit',
+      userId: map['userId'] ?? '',
+      date: map['date'] is String
+          ? DateTime.parse(map['date'])
+          : (map['date'] as Timestamp).toDate(), // Handles Firestore timestamp
     );
   }
 
-  // Convert Model -> Firestore
+
   Map<String, dynamic> toMap() {
     return {
       'title': title,
@@ -37,6 +41,7 @@ class TransactionModel {
       'amount': amount,
       'type': type,
       'date': date,
+      'userId': userId,
     };
   }
 }

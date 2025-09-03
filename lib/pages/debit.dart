@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../provider/transationProvider.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../provider/transationProvider.dart';
 
 class Debit extends ConsumerWidget {
   final String filterType;
@@ -10,22 +11,24 @@ class Debit extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final transactionsAsync = ref.watch(transactionsProvider);
+    final userId = FirebaseAuth.instance.currentUser!.uid; // get current user
+    final transactionsAsync = ref.watch(transactionsProvider(userId)); // pass userId here
 
     return Scaffold(
-      appBar: AppBar(title: Center(child: const Text("Debits")),backgroundColor: Colors.amber,),
+      appBar: AppBar(
+        title: const Center(child: Text("Debits")),
+        backgroundColor: Colors.amber,
+      ),
       backgroundColor: Colors.amber.shade200,
       body: transactionsAsync.when(
         data: (transactions) {
-          // Filter only debit transactions
-          final debits =
-          transactions.where((t) => t.type == filterType).toList();
+          // Filter only by transaction type
+          final debits = transactions.where((t) => t.type == filterType).toList();
 
           if (debits.isEmpty) {
             return const Center(child: Text("No debit transactions"));
           }
 
-          // Sort by latest first
           debits.sort((a, b) => b.date.compareTo(a.date));
 
           return ListView.builder(
