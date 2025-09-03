@@ -17,7 +17,9 @@ class Credit extends ConsumerWidget {
     final transactionsAsync = ref.watch(transactionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Credits")),
+      appBar: AppBar(title: Center(child: const Text("Credits")),
+      backgroundColor: Colors.amber,),
+      backgroundColor: Colors.amber.shade200,
       body: transactionsAsync.when(
         data: (transactions) {
           final credits =
@@ -36,13 +38,16 @@ class Credit extends ConsumerWidget {
               final formattedDate =
               DateFormat('dd MMM yyyy, hh:mm a').format(tx.date);
 
-              return ListTile(
-                title: Text(tx.title),
-                subtitle: Text("${tx.description}\n$formattedDate"),
-                trailing: Text(
-                  "+ ${tx.amount}",
-                  style: const TextStyle(
-                      color: Colors.green, fontWeight: FontWeight.bold),
+              return Card(
+                color: Colors.amber.shade50,
+                child: ListTile(
+                  title: Text(tx.title),
+                  subtitle: Text("${tx.description}\n$formattedDate"),
+                  trailing: Text(
+                    "+ ${tx.amount}",
+                    style: const TextStyle(
+                        color: Colors.green, fontWeight: FontWeight.bold),
+                  ),
                 ),
               );
             },

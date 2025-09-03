@@ -13,7 +13,8 @@ class Debit extends ConsumerWidget {
     final transactionsAsync = ref.watch(transactionsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Debits")),
+      appBar: AppBar(title: Center(child: const Text("Debits")),backgroundColor: Colors.amber,),
+      backgroundColor: Colors.amber.shade200,
       body: transactionsAsync.when(
         data: (transactions) {
           // Filter only debit transactions
@@ -34,13 +35,16 @@ class Debit extends ConsumerWidget {
               final formattedDate =
               DateFormat('dd MMM yyyy, hh:mm a').format(tx.date);
 
-              return ListTile(
-                title: Text(tx.title),
-                subtitle: Text("${tx.description}\n$formattedDate"),
-                trailing: Text(
-                  "- ${tx.amount}",
-                  style: const TextStyle(
-                      color: Colors.red, fontWeight: FontWeight.bold),
+              return Card(
+                color: Colors.amber.shade50,
+                child: ListTile(
+                  title: Text(tx.title),
+                  subtitle: Text("${tx.description}\n$formattedDate"),
+                  trailing: Text(
+                    "- ${tx.amount}",
+                    style: const TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.bold),
+                  ),
                 ),
               );
             },

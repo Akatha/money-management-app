@@ -2,8 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../provider/auth_provider.dart';
 import '../provider/transationProvider.dart';
 import 'addTransationForm.dart';
 import 'credit.dart';
@@ -18,8 +20,10 @@ class HomePage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Expense Tracker"),
+        title: Center(child: const Text("Expense Tracker")),
+        backgroundColor: Colors.amber,
       ),
+      backgroundColor: Colors.amber.shade200,
 
       // Drawer with SignOut
       drawer: Drawer(
@@ -38,6 +42,9 @@ class HomePage extends ConsumerWidget {
               title: const Text("Sign Out"),
               onTap: () async {
                 await FirebaseAuth.instance.signOut();
+                final box = Hive.box('authBox');
+                await box.clear();
+                await ref.read(authControllerProvider.notifier).logout();
                 if (context.mounted) {
                   context.goNamed('login');
                 }
@@ -54,12 +61,14 @@ class HomePage extends ConsumerWidget {
           children: [
             // Available Balance
             balanceAsync.when(
+
               data: (balance) => Text(
-                "Available Balance: \$${balance.toStringAsFixed(2)}",
+
+                "Available Balance: RS${balance.toStringAsFixed(2)}",
                 style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold),
+                    fontSize: 22, fontWeight: FontWeight.bold, ),
               ),
-              loading: () => const CircularProgressIndicator(),
+              loading: () => Center(child: const CircularProgressIndicator()),
               error: (e, _) => Text("Error: $e"),
             ),
             const SizedBox(height: 20),
@@ -81,6 +90,7 @@ class HomePage extends ConsumerWidget {
                   transactions.sort((a, b) => b.date.compareTo(a.date));
 
                   return ListView.builder(
+
                     itemCount: transactions.length,
                     itemBuilder: (context, index) {
                       final transaction = transactions[index];
@@ -146,29 +156,32 @@ class HomePage extends ConsumerWidget {
                           }
                           return false;
                         },
-                        child: ListTile(
-                          leading: Icon(
-                            transaction.type == "credit"
-                                ? Icons.arrow_upward
-                                : Icons.arrow_downward,
-                            color: transaction.type == "credit"
-                                ? Colors.green
-                                : Colors.red,
-                          ),
-                          title: Text(transaction.title),
-                          subtitle: Text(
-                            "${transaction.description}\n$formattedDate",
-                          ),
-                          isThreeLine: true,
-                          trailing: Text(
-                            transaction.type == "credit"
-                                ? "+ ${transaction.amount}"
-                                : "- ${transaction.amount}",
-                            style: TextStyle(
+                        child: Card(
+                          color: Colors.amber.shade50,
+                          child: ListTile(
+                            leading: Icon(
+                              transaction.type == "credit"
+                                  ? Icons.arrow_upward
+                                  : Icons.arrow_downward,
                               color: transaction.type == "credit"
                                   ? Colors.green
                                   : Colors.red,
-                              fontWeight: FontWeight.bold,
+                            ),
+                            title: Text(transaction.title),
+                            subtitle: Text(
+                              "${transaction.description}\n$formattedDate",
+                            ),
+                            isThreeLine: true,
+                            trailing: Text(
+                              transaction.type == "credit"
+                                  ? "+ ${transaction.amount}"
+                                  : "- ${transaction.amount}",
+                              style: TextStyle(
+                                color: transaction.type == "credit"
+                                    ? Colors.green
+                                    : Colors.red,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),

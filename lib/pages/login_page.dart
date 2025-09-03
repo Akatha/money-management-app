@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:hive/hive.dart';
 
 import '../contants/constants.dart';
+import '../provider/auth_provider.dart';
 import '../routes/route_enum.dart';
 import '../shared/validators.dart';
 
@@ -137,6 +138,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           final user = await loginUser(email, password);
 
                           if (user != null) {
+                            // Save login state in Hive
+                            ref.read(authControllerProvider.notifier).login(user);
+                            final box = Hive.box('authBox');
+                            box.put('isLoggedIn', true);
+                            box.put('email', email);
+// optionally store token or UID if needed
+
                             _formKey.currentState?.reset();
 
                             // Navigate to home on success
