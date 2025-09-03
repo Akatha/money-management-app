@@ -66,7 +66,7 @@ class HomePage extends ConsumerWidget {
 
                 "Available Balance: RS${balance.toStringAsFixed(2)}",
                 style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold, ),
+                    fontSize: 25, fontWeight: FontWeight.bold, ),
               ),
               loading: () => Center(child: const CircularProgressIndicator()),
               error: (e, _) => Text("Error: $e"),
