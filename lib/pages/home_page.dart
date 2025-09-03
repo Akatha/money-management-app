@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../provider/auth_provider.dart';
 import '../provider/transationProvider.dart';
+import '../routes/route_enum.dart';
 import 'addTransationForm.dart';
 import 'credit.dart';
 
@@ -37,19 +38,20 @@ class HomePage extends ConsumerWidget {
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
             ),
-            ListTile(
-              leading: const Icon(Icons.logout),
-              title: const Text("Sign Out"),
-              onTap: () async {
-                await FirebaseAuth.instance.signOut();
-                final box = Hive.box('authBox');
-                await box.clear();
-                await ref.read(authControllerProvider.notifier).logout();
-                if (context.mounted) {
-                  context.goNamed('login');
-                }
-              },
-            ),
+      ListTile(
+        leading: const Icon(Icons.logout),
+        title: const Text("Sign Out"),
+        onTap: () async {
+          await FirebaseAuth.instance.signOut();
+          final box = Hive.box('authBox');
+          await box.clear();
+          await ref.read(authControllerProvider.notifier).logout();
+          if (context.mounted) {
+            context.goNamed(AppRoute.login.name); // ✅ fixed
+          }
+        },
+      ),
+
           ],
         ),
       ),

@@ -32,12 +32,21 @@ class GoRouterConfig {
       final box = Hive.box('authBox');
       final isLoggedIn = box.get('isLoggedIn', defaultValue: false);
 
-      final loggingIn = state.matchedLocation == '/'; // login page
+      final loggingIn = state.matchedLocation == '/';      // login page
+      final signingUp = state.matchedLocation == '/signup'; // signup page
 
-      if (!isLoggedIn && !loggingIn) return '/'; // not logged in → go login
-      if (isLoggedIn && loggingIn) return '/home'; // logged in → go home
+      if (!isLoggedIn && !(loggingIn || signingUp)) {
+        // not logged in → force login, but allow signup
+        return '/';
+      }
+      if (isLoggedIn && (loggingIn || signingUp)) {
+        // already logged in → skip login/signup → go home
+        return '/home';
+      }
 
       return null; // no redirect
     },
+
+
   );
 }
